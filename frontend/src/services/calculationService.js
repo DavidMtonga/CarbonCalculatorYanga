@@ -12,22 +12,21 @@ export const saveCalculation = async (calculationData) => {
       throw new Error("Type and emissions are required fields");
     }
 
-    // Create a nested 'data' object for specific calculation types
-    // This matches the format the backend controller expects
+    // Create the payload that matches what the backend expects
     const payload = {
       type: calculationData.type.toUpperCase(),
       emissions: parseFloat(calculationData.emissions),
       carbonOffset: parseFloat(calculationData.carbonOffset || 0),
       data: {
-        cookingDuration: calculationData.cookingDuration
-          ? parseFloat(calculationData.cookingDuration)
+        cookingDuration: calculationData.data?.cookingDuration
+          ? parseFloat(calculationData.data.cookingDuration)
           : null,
-        cookingMeals: calculationData.cookingMeals
-          ? parseInt(calculationData.cookingMeals)
+        cookingMeals: calculationData.data?.cookingMeals
+          ? parseInt(calculationData.data.cookingMeals)
           : null,
-        fuelType: calculationData.fuelType || null,
-        charcoalUsed: calculationData.charcoalUsed
-          ? parseFloat(calculationData.charcoalUsed)
+        fuelType: calculationData.data?.fuelType || null,
+        charcoalUsed: calculationData.data?.charcoalUsed
+          ? parseFloat(calculationData.data.charcoalUsed)
           : null,
       },
     };
@@ -48,7 +47,7 @@ export const saveCalculation = async (calculationData) => {
       throw new Error(responseData.error || "Missing required fields");
     }
 
-    return responseData;
+    return { data: responseData };
   } catch (error) {
     console.error("Error saving calculation:", error);
     throw error;
@@ -73,7 +72,7 @@ export const getUserCalculations = async () => {
       throw new Error(responseData.error || "Failed to fetch calculations");
     }
 
-    return responseData.data;
+    return responseData;
   } catch (error) {
     console.error("Error fetching calculations:", error);
     throw error;
@@ -85,7 +84,7 @@ export const getDashboardData = async () => {
     const token = localStorage.getItem("token");
     if (!token) throw new Error("No authentication token found");
 
-    const response = await fetch(`${API_BASE_URL}/dashboard`, {
+    const response = await fetch(`${API_BASE_URL}/calculations/dashboard`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { saveCalculation } from "../../services/calculationService";
+import {
+  saveCalculation,
+  getUserCalculations,
+} from "../../services/calculationService";
 
 import CalculatorTabs from "../../components/calculator/CalculatorTabs";
 import CalculatorForm from "../../components/calculator/CalculatorForm";
@@ -22,7 +25,7 @@ export default function CalculatorPage() {
     const fetchUserCalculations = async () => {
       try {
         if (user?.id) {
-          const data = await fetchCalculations();
+          const data = await getUserCalculations();
           setCalculations(data);
         }
       } catch (err) {
@@ -39,7 +42,7 @@ export default function CalculatorPage() {
       setSaveError(null);
       setSaveSuccess(false);
 
-      const type = calculationData.type || currentSection; // fallback to currentSection
+      const type = calculationData.type || currentSection;
       if (!type) {
         throw new Error("Calculation type is required");
       }
@@ -50,7 +53,6 @@ export default function CalculatorPage() {
       if (user) {
         try {
           const payload = {
-            userId: user.id,
             type: type.toUpperCase(),
             emissions:
               calculationResult.total > 0 ? calculationResult.total : 0,
@@ -69,7 +71,7 @@ export default function CalculatorPage() {
 
           console.log("Sending payload:", payload);
           const saved = await saveCalculation(payload);
-          setCalculations((prev) => [...prev, saved]);
+          setCalculations((prev) => [...prev, saved.data]);
           setSaveSuccess(true);
         } catch (error) {
           console.error("Save error:", error);
@@ -192,8 +194,13 @@ export default function CalculatorPage() {
           ) : (
             <ul className="list-disc pl-5">
               {calculations.map((calc) => (
-                <li key={calc.id}>
+                <li key={calc.id || `calc-${calc.type}-${calc.createdAt}`}>
                   {calc.type} - {calc.emissions} kgCO₂e
+                  {calc.createdAt && (
+                    <span className="text-gray-500 text-sm ml-2">
+                      ({new Date(calc.createdAt).toLocaleDateString()})
+                    </span>
+                  )}
                 </li>
               ))}
             </ul>

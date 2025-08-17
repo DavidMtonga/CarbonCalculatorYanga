@@ -46,7 +46,6 @@ const CalculatorResults = ({ results, activeTab, onBack, onSave }) => {
         emissions: totalKg,
         carbonOffset: isOffset ? Math.abs(totalKg) : 0,
         data: {
-          ...results,
           fuelType: results.fuelType || "unknown",
           cookingDuration: results.cookingDuration || 0,
           cookingMeals: results.cookingMeals || 0,

@@ -16,31 +16,36 @@ export default function CalculatorPage() {
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const handleCalculate = async (section, formData) => {
+  const handleCalculate = async (calculationData) => {
     try {
       setIsLoading(true);
       setSaveError(null);
       setSaveSuccess(false);
 
+      const type = calculationData.type || currentSection;
+      if (!type) {
+        throw new Error("Calculation type is required");
+      }
+
       // Perform calculation
-      const calculationResult = calculateSection(section, formData);
+      const calculationResult = calculateSection(type, calculationData.data);
       setResults(calculationResult);
 
       // Save to backend if user is logged in
       if (user) {
         try {
           const payload = {
-            type: section.toUpperCase(),
-            data: formData,
+            type: type.toUpperCase(),
             emissions:
               calculationResult.total > 0 ? calculationResult.total : 0,
             carbonOffset:
               calculationResult.total < 0
                 ? Math.abs(calculationResult.total)
                 : 0,
+            data: calculationData.data,
           };
 
-          console.log("Sending payload:", payload); // Debug log
+          console.log("Sending payload:", payload);
 
           await saveCalculation(payload);
           setSaveSuccess(true);
@@ -72,7 +77,6 @@ export default function CalculatorPage() {
 
         let cookingEmissions = 0;
         let charcoalEmissions = 0;
-        let fuelConsumption = 0;
 
         if (data.fuelType === "charcoal") {
           // VERRA calculation for charcoal
@@ -80,13 +84,11 @@ export default function CalculatorPage() {
           charcoalEmissions = data.charcoalUsed * 2.2 * 30; // Monthly emissions
           cookingEmissions =
             data.cookingMeals * data.cookingDuration * 0.5 * 30; // Additional cooking process emissions
-          fuelConsumption = data.charcoalUsed * 30; // Monthly charcoal consumption
         } else {
           // Standard calculation for other fuel types
           const fuelFactor = fuelFactors[data.fuelType] || 1.0;
           cookingEmissions =
             data.cookingMeals * data.cookingDuration * fuelFactor * 30;
-          fuelConsumption = data.cookingDuration * 30; // Monthly fuel consumption in hours
         }
 
         // Meal preparation emissions (based on number of meals)

@@ -3,15 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import {
   saveCalculation,
-  getMyCalculations,
+  getUserCalculations,
 } from "../../services/calculationService";
+
 import CalculatorTabs from "../../components/calculator/CalculatorTabs";
 import CalculatorForm from "../../components/calculator/CalculatorForm";
 import CalculatorResults from "../../components/calculator/CalculatorResults";
 import CarbonOffsetCards from "../../components/layout/CarbonOffsetCards";
-import UserTable from "../../components/dashboard/UserTable";
 
-export default function UserDashboard() {
+export default function CalculatorPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [currentSection, setCurrentSection] = useState("cooking");
@@ -20,60 +20,64 @@ export default function UserDashboard() {
   const [saveError, setSaveError] = useState(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [calculations, setCalculations] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Load user's calculation history on component mount
   useEffect(() => {
-    loadCalculations();
-  }, []);
+    const fetchUserCalculations = async () => {
+      try {
+        if (user?.id) {
+          const data = await getUserCalculations();
+          setCalculations(data);
+        }
+      } catch (err) {
+        console.error("Error fetching calculations:", err);
+        setSaveError("Failed to load calculations");
+      }
+    };
+    fetchUserCalculations();
+  }, [user]);
 
-  const loadCalculations = async () => {
-    if (!user) return;
-
-    try {
-      setLoadingHistory(true);
-      const data = await getMyCalculations();
-      setCalculations(data);
-    } catch (error) {
-      console.error("Error loading calculations:", error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
-
-  const handleCalculate = async (section, formData) => {
+  const handleCalculate = async (calculationData) => {
     try {
       setIsLoading(true);
       setSaveError(null);
       setSaveSuccess(false);
 
-      console.log("handleCalculate called with:", { section, formData });
+      const type = calculationData.type || currentSection;
+      if (!type) {
+        throw new Error("Calculation type is required");
+      }
 
-      // Perform calculation
-      const calculationResult = calculateSection(section, formData);
-      console.log("Calculation result:", calculationResult);
+      const calculationResult = calculateSection(type, calculationData.data);
       setResults(calculationResult);
 
-      // Prepare data for saving to database
-      const saveData = {
-        type: section.toUpperCase(),
-        emissions: parseFloat(calculationResult.total.toFixed(2)),
-        carbonOffset: 0, // Set default, can be updated based on calculation type
-        ...formData, // Spread all form data fields
-      };
-
-      console.log("Data to save:", saveData);
-
-      // Save to backend if user is logged in
       if (user) {
         try {
-          await saveCalculation(saveData);
+          const payload = {
+            type: type.toUpperCase(),
+            emissions:
+              calculationResult.total > 0 ? calculationResult.total : 0,
+            carbonOffset:
+              calculationResult.total < 0
+                ? Math.abs(calculationResult.total)
+                : 0,
+            data: {
+              cookingDuration:
+                parseFloat(calculationData.data.cookingDuration) || 0,
+              cookingMeals: parseInt(calculationData.data.cookingMeals) || 0,
+              fuelType: calculationData.data.fuelType || "unknown",
+              charcoalUsed: parseFloat(calculationData.data.charcoalUsed) || 0,
+            },
+          };
+
+          console.log("Sending payload:", payload);
+          const saved = await saveCalculation(payload);
+          setCalculations((prev) => [...prev, saved.data]);
           setSaveSuccess(true);
-          // Reload calculations to show the new one
-          await loadCalculations();
         } catch (error) {
           console.error("Save error:", error);
-          setSaveError(error.message || "Failed to save calculation");
+          setSaveError(
+            error.message || "Failed to save calculation. Please try again."
+          );
         }
       }
     } catch (error) {
@@ -85,78 +89,57 @@ export default function UserDashboard() {
   };
 
   const calculateSection = (section, data) => {
-    console.log("calculateSection called with:", { section, data });
-
     const calculationFunctions = {
       cooking: () => {
-        // Enhanced cooking calculations with VERRA methodology
         const fuelFactors = {
-          wood: 1.5, // kg CO2e per hour of cooking
-          charcoal: 2.2, // kg CO2e per kg of charcoal
-          lpg: 0.8, // kg CO2e per hour of cooking
-          electricity: 0.5, // kg CO2e per hour of cooking
+          wood: 1.5,
+          charcoal: 2.2,
+          lpg: 0.8,
+          electricity: 0.5,
         };
 
         let cookingEmissions = 0;
         let charcoalEmissions = 0;
-        let fuelConsumption = 0;
+
+        const cookingMeals = parseFloat(data.cookingMeals) || 0;
+        const cookingDuration = parseFloat(data.cookingDuration) || 0;
+        const charcoalUsed = parseFloat(data.charcoalUsed) || 0;
 
         if (data.fuelType === "charcoal") {
-          // VERRA calculation for charcoal
-          charcoalEmissions = (data.charcoalUsed || 0) * 2.2 * 30; // Monthly emissions
-          cookingEmissions =
-            (data.cookingMeals || 0) * (data.cookingDuration || 0) * 0.5 * 30;
+          charcoalEmissions = charcoalUsed * 2.2 * 30;
+          cookingEmissions = cookingMeals * cookingDuration * 0.5 * 30;
         } else {
-          // Standard calculation for other fuel types
           const fuelFactor = fuelFactors[data.fuelType] || 1.0;
-          cookingEmissions =
-            (data.cookingMeals || 0) *
-            (data.cookingDuration || 0) *
-            fuelFactor *
-            30;
+          cookingEmissions = cookingMeals * cookingDuration * fuelFactor * 30;
         }
 
-        // Meal preparation emissions
-        const mealPreparationEmissions = (data.cookingMeals || 0) * 0.3 * 30;
-        const cookingDurationImpact = (data.cookingDuration || 0) * 0.2 * 30;
+        const mealPreparationEmissions = cookingMeals * 0.3 * 30;
 
-        const breakdown = {
+        return {
           "Fuel Consumption": cookingEmissions,
+          ...(data.fuelType === "charcoal" && {
+            "Charcoal Emissions (VERRA)": charcoalEmissions,
+          }),
           "Meal Preparation": mealPreparationEmissions,
-          "Cooking Duration Impact": cookingDurationImpact,
+          "Cooking Duration Impact": cookingDuration * 0.2 * 30,
         };
-
-        if (data.fuelType === "charcoal") {
-          breakdown["Charcoal Emissions (VERRA)"] = charcoalEmissions;
-        }
-
-        breakdown.total = Object.values(breakdown).reduce(
-          (sum, val) => sum + val,
-          0
-        );
-
-        console.log("Calculation breakdown:", breakdown);
-        return breakdown;
       },
     };
 
-    if (!calculationFunctions[section]) {
-      console.warn("No calculation function found for section:", section);
-      return { total: 0 };
-    }
+    if (!calculationFunctions[section]) return { total: 0 };
 
-    return calculationFunctions[section]();
+    const results = calculationFunctions[section]();
+    results.total = Object.values(results).reduce((sum, val) => sum + val, 0);
+    return results;
   };
 
-  const handleSave = () => {
-    navigate("/dashboard");
-  };
+  const handleSave = () => navigate("/dashboard");
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-3xl font-bold text-center mb-2 text-green-700">
-          Carbon Calculator Dashboard
+          Carbon Calculator Yanga
         </h1>
 
         {saveError && (
@@ -172,7 +155,6 @@ export default function UserDashboard() {
         )}
 
         <div className="flex flex-col lg:flex-row gap-8 items-start">
-          {/* Main Calculator Section */}
           <div className="flex-1 max-w-4xl">
             <CalculatorTabs
               activeTab={currentSection}
@@ -180,7 +162,7 @@ export default function UserDashboard() {
             />
 
             {!results ? (
-              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+              <div className="bg-white rounded-lg shadow-md p-6">
                 <CalculatorForm
                   activeTab={currentSection}
                   onCalculate={handleCalculate}
@@ -188,7 +170,7 @@ export default function UserDashboard() {
                 />
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+              <div className="bg-white rounded-lg shadow-md p-6">
                 <CalculatorResults
                   results={results}
                   activeTab={currentSection}
@@ -198,25 +180,26 @@ export default function UserDashboard() {
                 />
               </div>
             )}
-
-            {/* Calculation History */}
-            {user && (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">
-                  Calculation History
-                </h2>
-                <UserTable
-                  calculations={calculations}
-                  isLoading={loadingHistory}
-                />
-              </div>
-            )}
           </div>
 
-          {/* Carbon Offset Cards - Sidebar */}
           <div className="lg:sticky lg:top-8">
             <CarbonOffsetCards />
           </div>
+        </div>
+
+        <div className="mt-8 bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
+          <h3 className="text-xl font-semibold mb-4">Your Calculations</h3>
+          {calculations.length === 0 ? (
+            <p>No calculations saved yet.</p>
+          ) : (
+            <ul className="list-disc pl-5">
+              {calculations.map((calc) => (
+                <li key={calc.id}>
+                  {calc.type} - {calc.emissions} kgCO₂e
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
