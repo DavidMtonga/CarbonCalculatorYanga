@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int            @id @default(autoincrement())
+  name         String
+  email        String         @unique
+  password     String
+  organization String?
+  role         Role           @default(USER)
+  lastLogin    DateTime?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  calculations Calculation[]
+}
+
+model Calculation {
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  type            CalculationType  @default(COOKING)
+  emissions       Float
+  carbonOffset    Float            @default(0)
+
+  // Keep only cooking-specific fields
+  cookingDuration Float?
+  cookingMeals    Int?
+  fuelType        String?
+  charcoalUsed    Float?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum CalculationType {
+
+  COOKING
+  
+}
