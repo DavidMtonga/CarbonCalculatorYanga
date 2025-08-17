@@ -82,7 +82,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-gray-400 text-white py-2 rounded-lg mb-2 p-2">
+      <div className=" bg-gray-400 text-white py-2 rounded-lg mb-2 p-2">
         <div className="flex items-center justify-center gap-2 mb-2">
           <svg
             className="h-5 w-5"
@@ -111,10 +111,10 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {activeTab === "cooking" && (
-          <div className="flex flex-col items-center justify-center">
+          <>
             {/* Cooking Fuel Type */}
-            <div className="space-y-3 w-full max-w-md">
-              <label className="block text-gray-700 font-medium text-md text-center">
+            <div className="space-y-3">
+              <label className="block text-gray-700 font-medium text-md">
                 Cooking Fuel Type
               </label>
               <select
@@ -135,7 +135,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
                 <option value="electricity">Electricity</option>
               </select>
               {formErrors.fuelType && (
-                <p className="text-red-500 text-sm flex items-center gap-1 justify-center">
+                <p className="text-red-500 text-sm flex items-center gap-1">
                   <svg
                     className="h-4 w-4"
                     fill="none"
@@ -155,8 +155,8 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
             </div>
 
             {/* Meals Cooked per Day */}
-            <div className="space-y-3 w-full max-w-md">
-              <label className="flex items-center gap-2 text-gray-700 font-medium text-md justify-center">
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-gray-700 font-medium text-md">
                 <svg
                   className="h-5 w-5 text-pink-600"
                   fill="none"
@@ -201,7 +201,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
                 </div>
               </div>
               {formErrors.cookingMeals && (
-                <p className="text-red-500 text-sm flex items-center gap-1 justify-center">
+                <p className="text-red-500 text-sm flex items-center gap-1">
                   <svg
                     className="h-4 w-4"
                     fill="none"
@@ -221,8 +221,8 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
             </div>
 
             {/* Daily Cooking Duration */}
-            <div className="space-y-3 w-full max-w-md">
-              <label className="flex items-center gap-2 text-gray-700 font-medium text-md justify-center">
+            <div className="space-y-3">
+              <label className="flex items-center gap-2 text-gray-700 font-medium text-md">
                 <svg
                   className="h-5 w-5 text-pink-600"
                   fill="none"
@@ -269,7 +269,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
                 </div>
               </div>
               {formErrors.cookingDuration && (
-                <p className="text-red-500 text-sm flex items-center gap-1 justify-center">
+                <p className="text-red-500 text-sm flex items-center gap-1">
                   <svg
                     className="h-4 w-4"
                     fill="none"
@@ -290,8 +290,8 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
 
             {/* Charcoal Used - Only show when charcoal is selected */}
             {formData.fuelType === "charcoal" && (
-              <div className="space-y-3 bg-blue-50 p-4 rounded-lg border border-blue-200 w-full max-w-md">
-                <label className="flex items-center gap-2 text-gray-700 font-medium text-md justify-center">
+              <div className="space-y-3 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <label className="flex items-center gap-2 text-gray-700 font-medium text-md">
                   <svg
                     className="h-5 w-5 text-blue-600"
                     fill="none"
@@ -334,7 +334,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
                     <span>0.5 kg</span>
                     <span>10 kg</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-blue-700 justify-center">
+                  <div className="flex items-center gap-2 text-sm text-blue-700">
                     <svg
                       className="h-4 w-4"
                       fill="none"
@@ -352,7 +352,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
                   </div>
                 </div>
                 {formErrors.charcoalUsed && (
-                  <p className="text-red-500 text-sm flex items-center gap-1 justify-center">
+                  <p className="text-red-500 text-sm flex items-center gap-1">
                     <svg
                       className="h-4 w-4"
                       fill="none"
@@ -371,7 +371,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
                 )}
               </div>
             )}
-          </div>
+          </>
         )}
 
         <button
