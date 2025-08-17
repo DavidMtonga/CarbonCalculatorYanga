@@ -1,212 +1,264 @@
+import Footer from "../../components/layout/Footer";
+import VerificationPartners from "../../components/layout/VerificationPartners";
+import PartnersScroller from "../../components/layout/PartnersScroller";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import {
-  saveCalculation,
-  getUserCalculations,
-} from "../../services/calculationService";
+import { getUserCalculations } from "../../services/calculationService";
+import StatsCard from "./StatsCard";
+import UserTable from "./UserTable";
+import EmissionsChart from "./EmissionsChart";
 
-import CalculatorTabs from "../../components/calculator/CalculatorTabs";
-import CalculatorForm from "../../components/calculator/CalculatorForm";
-import CalculatorResults from "../../components/calculator/CalculatorResults";
-import CarbonOffsetCards from "../../components/layout/CarbonOffsetCards";
-
-export default function CalculatorPage() {
+export default function UserDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [currentSection, setCurrentSection] = useState("cooking");
-  const [results, setResults] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [saveError, setSaveError] = useState(null);
-  const [saveSuccess, setSaveSuccess] = useState(false);
   const [calculations, setCalculations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchUserCalculations = async () => {
       try {
+        setIsLoading(true);
         if (user?.id) {
           const data = await getUserCalculations();
           setCalculations(data);
         }
       } catch (err) {
         console.error("Error fetching calculations:", err);
-        setSaveError("Failed to load calculations");
+        setError("Failed to load calculations");
+      } finally {
+        setIsLoading(false);
       }
     };
+
     fetchUserCalculations();
   }, [user]);
 
-  const handleCalculate = async (calculationData) => {
-    try {
-      setIsLoading(true);
-      setSaveError(null);
-      setSaveSuccess(false);
-
-      const type = calculationData.type || currentSection;
-      if (!type) {
-        throw new Error("Calculation type is required");
-      }
-
-      const calculationResult = calculateSection(type, calculationData.data);
-      setResults(calculationResult);
-
-      if (user) {
-        try {
-          const payload = {
-            type: type.toUpperCase(),
-            emissions:
-              calculationResult.total > 0 ? calculationResult.total : 0,
-            carbonOffset:
-              calculationResult.total < 0
-                ? Math.abs(calculationResult.total)
-                : 0,
-            data: {
-              cookingDuration:
-                parseFloat(calculationData.data.cookingDuration) || 0,
-              cookingMeals: parseInt(calculationData.data.cookingMeals) || 0,
-              fuelType: calculationData.data.fuelType || "unknown",
-              charcoalUsed: parseFloat(calculationData.data.charcoalUsed) || 0,
-            },
-          };
-
-          console.log("Sending payload:", payload);
-          const saved = await saveCalculation(payload);
-          setCalculations((prev) => [...prev, saved.data]);
-          setSaveSuccess(true);
-        } catch (error) {
-          console.error("Save error:", error);
-          setSaveError(
-            error.message || "Failed to save calculation. Please try again."
-          );
-        }
-      }
-    } catch (error) {
-      console.error("Calculation error:", error);
-      setSaveError("An error occurred during calculation. Please try again.");
-    } finally {
-      setIsLoading(false);
+  const calculateStats = () => {
+    if (!calculations || calculations.length === 0) {
+      return {
+        totalEmissions: 0,
+        totalOffset: 0,
+        netImpact: 0,
+      };
     }
-  };
 
-  const calculateSection = (section, data) => {
-    const calculationFunctions = {
-      cooking: () => {
-        const fuelFactors = {
-          wood: 1.5,
-          charcoal: 2.2,
-          lpg: 0.8,
-          electricity: 0.5,
-        };
+    const totalEmissions = calculations.reduce(
+      (sum, calc) => sum + (calc.emissions || 0),
+      0
+    );
+    const totalOffset = calculations.reduce(
+      (sum, calc) => sum + (calc.carbonOffset || 0),
+      0
+    );
+    const netImpact = totalEmissions - totalOffset;
 
-        let cookingEmissions = 0;
-        let charcoalEmissions = 0;
-
-        const cookingMeals = parseFloat(data.cookingMeals) || 0;
-        const cookingDuration = parseFloat(data.cookingDuration) || 0;
-        const charcoalUsed = parseFloat(data.charcoalUsed) || 0;
-
-        if (data.fuelType === "charcoal") {
-          charcoalEmissions = charcoalUsed * 2.2 * 30;
-          cookingEmissions = cookingMeals * cookingDuration * 0.5 * 30;
-        } else {
-          const fuelFactor = fuelFactors[data.fuelType] || 1.0;
-          cookingEmissions = cookingMeals * cookingDuration * fuelFactor * 30;
-        }
-
-        const mealPreparationEmissions = cookingMeals * 0.3 * 30;
-
-        return {
-          "Fuel Consumption": cookingEmissions,
-          ...(data.fuelType === "charcoal" && {
-            "Charcoal Emissions (VERRA)": charcoalEmissions,
-          }),
-          "Meal Preparation": mealPreparationEmissions,
-          "Cooking Duration Impact": cookingDuration * 0.2 * 30,
-        };
-      },
+    return {
+      totalEmissions: totalEmissions / 1000, // Convert to tonnes
+      totalOffset: totalOffset / 1000, // Convert to tonnes
+      netImpact: netImpact / 1000, // Convert to tonnes
     };
-
-    if (!calculationFunctions[section]) return { total: 0 };
-
-    const results = calculationFunctions[section]();
-    results.total = Object.values(results).reduce((sum, val) => sum + val, 0);
-    return results;
   };
 
-  const handleSave = () => navigate("/dashboard");
+  const stats = calculateStats();
+
+  const handleNewCalculation = () => {
+    navigate("/calculator");
+  };
+
+  const handleStartCalculating = () => {
+    navigate("/calculator");
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-center mb-2 text-green-700">
-          Carbon Calculator Yanga
-        </h1>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Carbon Footprint Dashboard
+          </h1>
+          <p className="text-gray-600">
+            Welcome back, {user?.name || user?.email || "User"}! Track your
+            environmental impact.
+          </p>
+        </div>
 
-        {saveError && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded max-w-4xl mx-auto">
-            {saveError}
+        {error && (
+          <div className="mb-6 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            {error}
           </div>
         )}
 
-        {saveSuccess && (
-          <div className="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded max-w-4xl mx-auto">
-            Calculation saved successfully!
-          </div>
-        )}
-
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
-          <div className="flex-1 max-w-4xl">
-            <CalculatorTabs
-              activeTab={currentSection}
-              onTabChange={setCurrentSection}
-            />
-
-            {!results ? (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <CalculatorForm
-                  activeTab={currentSection}
-                  onCalculate={handleCalculate}
-                  isLoading={isLoading}
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <StatsCard
+            title="TOTAL EMISSIONS"
+            value={stats.totalEmissions.toFixed(2)}
+            subtitle="Tonnes CO2e"
+            icon={({ className }) => (
+              <svg
+                className={className}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"
                 />
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow-md p-6">
-                <CalculatorResults
-                  results={results}
-                  activeTab={currentSection}
-                  onBack={() => setResults(null)}
-                  onSave={user ? handleSave : null}
-                  saveSuccess={saveSuccess}
-                />
-              </div>
+              </svg>
             )}
-          </div>
+            colorClass="text-red-600"
+            trend={
+              calculations.length > 1
+                ? { value: "12%", isPositive: false }
+                : null
+            }
+          />
 
-          <div className="lg:sticky lg:top-8">
-            <CarbonOffsetCards />
-          </div>
+          <StatsCard
+            title="TOTAL OFFSET"
+            value={stats.totalOffset.toFixed(2)}
+            subtitle="Tonnes CO2e"
+            icon={({ className }) => (
+              <svg
+                className={className}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M7 11l5-5m0 0l5 5m-5-5v12"
+                />
+              </svg>
+            )}
+            colorClass="text-green-600"
+            trend={
+              calculations.length > 1 ? { value: "8%", isPositive: true } : null
+            }
+          />
+
+          <StatsCard
+            title="NET IMPACT"
+            value={stats.netImpact.toFixed(2)}
+            subtitle="Tonnes CO2e"
+            icon={({ className }) => (
+              <svg
+                className={className}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            )}
+            colorClass={stats.netImpact > 0 ? "text-red-600" : "text-green-600"}
+            trend={
+              calculations.length > 1
+                ? { value: "5%", isPositive: stats.netImpact < 0 }
+                : null
+            }
+          />
         </div>
 
-        <div className="mt-8 bg-white rounded-lg shadow-md p-6 max-w-4xl mx-auto">
-          <h3 className="text-xl font-semibold mb-4">Your Calculations</h3>
-          {calculations.length === 0 ? (
-            <p>No calculations saved yet.</p>
-          ) : (
-            <ul className="list-disc pl-5">
-              {calculations.map((calc) => (
-                <li key={calc.id || `calc-${calc.type}-${calc.createdAt}`}>
-                  {calc.type} - {calc.emissions} kgCO₂e
-                  {calc.createdAt && (
-                    <span className="text-gray-500 text-sm ml-2">
-                      ({new Date(calc.createdAt).toLocaleDateString()})
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+        {/* Calculation History Section */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Calculation History
+              </h2>
+              <p className="text-gray-600 text-sm">
+                Track all your carbon footprint calculations
+              </p>
+            </div>
+            <button
+              onClick={handleNewCalculation}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                />
+              </svg>
+              New Calculation
+            </button>
+          </div>
+
+          <UserTable calculations={calculations} isLoading={isLoading} />
         </div>
+
+        {/* Emissions Chart */}
+        {calculations && calculations.length > 0 && (
+          <div className="mb-8">
+            <EmissionsChart calculations={calculations} />
+          </div>
+        )}
+
+        {/* Empty State for New Users */}
+        {!isLoading && (!calculations || calculations.length === 0) && (
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="mx-auto h-16 w-16 text-gray-400 mb-4">
+              <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">
+              No calculations yet
+            </h3>
+            <p className="text-gray-500 mb-6">
+              Get started by using our carbon calculator to track your
+              environmental impact.
+            </p>
+            <button
+              onClick={handleStartCalculating}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 inline-flex items-center gap-2"
+            >
+              <svg
+                className="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+              Start Calculating
+            </button>
+          </div>
+        )}
       </div>
+      <VerificationPartners />
+      <Footer />
+      {/* <PartnersScroller /> */}
     </div>
   );
 }

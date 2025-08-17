@@ -35,7 +35,7 @@ export default function EmissionsChart({ calculations }) {
   };
 
   return (
-    <div className="bg-white p-4 rounded-lg shadow">
+    <div className="bg-white p-2 rounded-lg shadow">
       <h2 className="text-lg font-semibold mb-4">Emissions by Category</h2>
       <div className="max-w-md mx-auto">
         <Pie data={chartData} />

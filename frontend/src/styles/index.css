@@ -5,6 +5,17 @@ body {
   font-family: "Poppins", sans-serif;
 }
 
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+  display: inline-block;
+  white-space: nowrap;
+}
+
 @layer components {
   .card {
     @apply bg-white p-4 rounded-lg shadow;
@@ -18,3 +29,4 @@ body {
     @apply bg-green-600 text-white;
   }
 }
+

@@ -6,6 +6,9 @@ import CalculatorTabs from "../components/calculator/CalculatorTabs";
 import CalculatorForm from "../components/calculator/CalculatorForm";
 import CalculatorResults from "../components/calculator/CalculatorResults";
 import CarbonOffsetCards from "../components/layout/CarbonOffsetCards";
+import Footer from "../components/layout/Footer";
+import VerificationPartners from "../components/layout/VerificationPartners";
+import PartnersScroller from "../components/layout/PartnersScroller";
 
 export default function CalculatorPage() {
   const { user } = useAuth();
@@ -42,7 +45,13 @@ export default function CalculatorPage() {
               calculationResult.total < 0
                 ? Math.abs(calculationResult.total)
                 : 0,
-            data: calculationData.data,
+            data: {
+              cookingDuration:
+                parseFloat(calculationData.data.cookingDuration) || 0,
+              cookingMeals: parseInt(calculationData.data.cookingMeals) || 0,
+              fuelType: calculationData.data.fuelType || "unknown",
+              charcoalUsed: parseFloat(calculationData.data.charcoalUsed) || 0,
+            },
           };
 
           console.log("Sending payload:", payload);
@@ -78,21 +87,23 @@ export default function CalculatorPage() {
         let cookingEmissions = 0;
         let charcoalEmissions = 0;
 
+        const cookingMeals = parseFloat(data.cookingMeals) || 0;
+        const cookingDuration = parseFloat(data.cookingDuration) || 0;
+        const charcoalUsed = parseFloat(data.charcoalUsed) || 0;
+
         if (data.fuelType === "charcoal") {
           // VERRA calculation for charcoal
           // Emission factor: 2.2 kg CO2e per kg of charcoal
-          charcoalEmissions = data.charcoalUsed * 2.2 * 30; // Monthly emissions
-          cookingEmissions =
-            data.cookingMeals * data.cookingDuration * 0.5 * 30; // Additional cooking process emissions
+          charcoalEmissions = charcoalUsed * 2.2 * 30; // Monthly emissions
+          cookingEmissions = cookingMeals * cookingDuration * 0.5 * 30; // Additional cooking process emissions
         } else {
           // Standard calculation for other fuel types
           const fuelFactor = fuelFactors[data.fuelType] || 1.0;
-          cookingEmissions =
-            data.cookingMeals * data.cookingDuration * fuelFactor * 30;
+          cookingEmissions = cookingMeals * cookingDuration * fuelFactor * 30;
         }
 
         // Meal preparation emissions (based on number of meals)
-        const mealPreparationEmissions = data.cookingMeals * 0.3 * 30; // 0.3 kg CO2e per meal
+        const mealPreparationEmissions = cookingMeals * 0.3 * 30; // 0.3 kg CO2e per meal
 
         return {
           "Fuel Consumption": cookingEmissions,
@@ -100,7 +111,7 @@ export default function CalculatorPage() {
             "Charcoal Emissions (VERRA)": charcoalEmissions,
           }),
           "Meal Preparation": mealPreparationEmissions,
-          "Cooking Duration Impact": data.cookingDuration * 0.2 * 30,
+          "Cooking Duration Impact": cookingDuration * 0.2 * 30,
         };
       },
     };
@@ -121,9 +132,14 @@ export default function CalculatorPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-center mb-2 text-green-700">
-          Carbon Calculator Yanga
-        </h1>
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-bold text-green-700 mb-2">
+            Carbon Calculator Yanga
+          </h1>
+          <p className="text-gray-600">
+            Calculate your carbon footprint with verified methodologies
+          </p>
+        </div>
 
         {saveError && (
           <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded max-w-4xl mx-auto">
@@ -172,6 +188,9 @@ export default function CalculatorPage() {
           </div>
         </div>
       </div>
+      <VerificationPartners />
+      <Footer />
+      {/* <PartnersScroller /> */}
     </div>
   );
 }
