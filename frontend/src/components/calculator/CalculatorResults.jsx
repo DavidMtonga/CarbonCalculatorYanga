@@ -73,7 +73,21 @@ const CalculatorResults = ({
   };
 
   const handleNavigateToOffset = () => {
-    navigate("/offset");
+    // Pass baseline results to offset page for improvement modeling
+    navigate("/offset", {
+      state: {
+        baseline: {
+          id: undefined, // can be filled if you fetch latest saved calc id
+          total: results.total,
+          data: {
+            fuelType: results.fuelType,
+            cookingDuration: results.cookingDuration,
+            cookingMeals: results.cookingMeals,
+            charcoalUsed: results.charcoalUsed,
+          },
+        },
+      },
+    });
   };
 
   return (

@@ -26,7 +26,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", token);
       setToken(token);
       setUser(user);
-      navigate("/dashboard");
+      // Redirect based on user role
+      if (user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       throw error;
     }
@@ -38,7 +43,12 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("token", token);
       setToken(token);
       setUser(user);
-      navigate("/dashboard");
+      // Redirect based on user role
+      if (user.role === "ADMIN") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     } catch (error) {
       throw error;
     }

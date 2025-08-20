@@ -5,6 +5,8 @@ import DashboardPage from "./pages/DashboardPage";
 import AdminPage from "./pages/AdminPage";
 import AuthPage from "./pages/AuthPage";
 import CalculatorPage from "./pages/CalculatorPage";
+import OffsetPage from "./pages/OffsetPage";
+import AdminAuthPage from "./pages/AdminAuthPage";
 import ProtectedRoute from "./components/layout/ProtectedRoute";
 import { useState } from "react";
 
@@ -63,6 +65,7 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<AuthPage />} />
+        <Route path="/admin/register" element={<AdminAuthPage />} />
         <Route
           path="/calculator"
           element={
@@ -79,6 +82,14 @@ function App() {
           element={
             <ProtectedRoute>
               <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/offset"
+          element={
+            <ProtectedRoute>
+              <OffsetPage />
             </ProtectedRoute>
           }
         />

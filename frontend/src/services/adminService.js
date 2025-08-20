@@ -21,3 +21,31 @@ export const exportCalculations = async () => {
   });
   return response.data;
 };
+
+export const registerAdmin = async ({ name, email, password, organization, adminSecret }) => {
+  const response = await api.post("/auth/register-admin", {
+    name,
+    email,
+    password,
+    organization,
+    adminSecret,
+  });
+  return response.data;
+};
+
+export const createUserAsAdmin = async (payload) => {
+  const response = await api.post("/admin/users", payload);
+  return response.data;
+};
+
+export const deleteUserAsAdmin = async (userId) => {
+  const response = await api.delete(`/admin/users/${userId}`);
+  return response.data;
+};
+
+export const resetUserPassword = async (userId, newPassword) => {
+  const response = await api.post(`/admin/users/${userId}/reset-password`, {
+    newPassword
+  });
+  return response.data;
+};

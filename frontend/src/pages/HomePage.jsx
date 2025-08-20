@@ -19,6 +19,11 @@ export default function HomePage() {
         <Link to="/calculator">
           <Button variant="outline">Try Calculator</Button>
         </Link>
+        <Link to="/admin/register">
+          <Button variant="outline" className="bg-purple-600 hover:bg-purple-700 text-white">
+            Admin Registration
+          </Button>
+        </Link>
       </div>
     </div>
   );

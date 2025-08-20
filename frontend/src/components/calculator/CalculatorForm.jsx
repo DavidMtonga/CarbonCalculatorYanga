@@ -429,6 +429,7 @@ const CalculatorForm = ({ activeTab = "cooking", onCalculate, isLoading }) => {
             </>
           )}
         </button>
+        
       </form>
 
       <style>

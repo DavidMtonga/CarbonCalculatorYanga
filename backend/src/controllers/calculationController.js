@@ -1,4 +1,4 @@
-import ApiError from "../utils/apiError.js";
+import ApiError from "../utils/apiError";
 import ApiResponse from "../utils/apiResponse.js";
 import { saveCalculation } from "../services/calculationService.js";
 

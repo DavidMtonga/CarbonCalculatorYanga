@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch"]
+  previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
@@ -19,6 +19,7 @@ model User {
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   calculations Calculation[]
+  offsets      Offset[]
 }
 
 model Calculation {
@@ -39,6 +40,10 @@ model Calculation {
 
   user            User             @relation(fields: [userId], references: [id])
 
+  // Relations to offsets (baseline and improved)
+  offsetsAsBaseline Offset[]       @relation("BaselineCalculation")
+  offsetsAsImproved Offset[]       @relation("ImprovedCalculation")
+
   @@index([userId])
   @@index([type])
   @@index([createdAt])
@@ -53,4 +58,23 @@ enum CalculationType {
 
   COOKING
   
+}
+
+// Track explicit offset actions/improvements
+model Offset {
+  id                     Int          @id @default(autoincrement())
+  userId                 Int
+  amount                 Float
+  baselineCalculationId  Int?
+  improvedCalculationId  Int?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  user                   User         @relation(fields: [userId], references: [id])
+  baselineCalculation    Calculation? @relation("BaselineCalculation", fields: [baselineCalculationId], references: [id])
+  improvedCalculation    Calculation? @relation("ImprovedCalculation", fields: [improvedCalculationId], references: [id])
+
+  @@index([userId])
+  @@index([baselineCalculationId])
+  @@index([improvedCalculationId])
 }

@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { getUserCalculations } from "../../services/calculationService";
+import { getOffsets } from "../../services/offsetService";
 import StatsCard from "./StatsCard";
 import UserTable from "./UserTable";
 import EmissionsChart from "./EmissionsChart";
@@ -15,14 +16,19 @@ export default function UserDashboard() {
   const [calculations, setCalculations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [offsets, setOffsets] = useState([]);
 
   useEffect(() => {
     const fetchUserCalculations = async () => {
       try {
         setIsLoading(true);
         if (user?.id) {
-          const data = await getUserCalculations();
+          const [data, offs] = await Promise.all([
+            getUserCalculations(),
+            getOffsets(),
+          ]);
           setCalculations(data);
+          setOffsets(offs || []);
         }
       } catch (err) {
         console.error("Error fetching calculations:", err);
@@ -36,7 +42,7 @@ export default function UserDashboard() {
   }, [user]);
 
   const calculateStats = () => {
-    if (!calculations || calculations.length === 0) {
+    if ((!calculations || calculations.length === 0) && (!offsets || offsets.length === 0)) {
       return {
         totalEmissions: 0,
         totalOffset: 0,
@@ -48,10 +54,15 @@ export default function UserDashboard() {
       (sum, calc) => sum + (calc.emissions || 0),
       0
     );
-    const totalOffset = calculations.reduce(
+    const totalCalculatedOffset = calculations.reduce(
       (sum, calc) => sum + (calc.carbonOffset || 0),
       0
     );
+    const totalRecordedOffset = offsets.reduce(
+      (sum, o) => sum + (o.amount || 0),
+      0
+    );
+    const totalOffset = totalCalculatedOffset + totalRecordedOffset;
     const netImpact = totalEmissions - totalOffset;
 
     return {
@@ -70,6 +81,21 @@ export default function UserDashboard() {
   const handleStartCalculating = () => {
     navigate("/calculator");
   };
+
+  // Build history list combining calculations and recorded offsets
+  const historyRows = (() => {
+    const offsetRows = (offsets || []).map((o) => ({
+      id: `offset-${o.id}`,
+      type: o?.baselineCalculation?.type || "OFFSET",
+      emissions: 0,
+      carbonOffset: o.amount || 0,
+      createdAt: o.createdAt,
+    }));
+    const rows = [...(calculations || []), ...offsetRows];
+    return rows.sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  })();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -204,13 +230,13 @@ export default function UserDashboard() {
             </button>
           </div>
 
-          <UserTable calculations={calculations} isLoading={isLoading} />
+          <UserTable calculations={historyRows} isLoading={isLoading} />
         </div>
 
         {/* Emissions Chart */}
         {calculations && calculations.length > 0 && (
           <div className="mb-8">
-            <EmissionsChart calculations={calculations} />
+            <EmissionsChart calculations={calculations} offsets={offsets} />
           </div>
         )}
 

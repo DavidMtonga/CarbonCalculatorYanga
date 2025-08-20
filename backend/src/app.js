@@ -77,6 +77,50 @@ app.post("/api/auth/register", async (req, res) => {
   }
 });
 
+// Secure Admin registration with secret
+app.post("/api/auth/register-admin", async (req, res) => {
+  try {
+    const { name, email, password, organization, adminSecret } = req.body;
+    if (adminSecret !== process.env.ADMIN_REGISTRATION_SECRET) {
+      return res.status(403).json({ error: "Invalid admin registration secret" });
+    }
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        organization: organization || null,
+        role: "ADMIN",
+      },
+    });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.json({
+      token,
+      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+    });
+  } catch (error) {
+    console.error("Admin registration error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 app.post("/api/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -177,6 +221,56 @@ app.get("/api/calculations", authenticateToken, async (req, res) => {
   }
 });
 
+// Offsets routes
+app.post("/api/offsets", authenticateToken, async (req, res) => {
+  try {
+    const { amount, baselineCalculationId, improvedCalculationId } = req.body;
+
+    if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
+      return res.status(400).json({ error: "Valid numeric 'amount' is required" });
+    }
+
+    const offset = await prisma.offset.create({
+      data: {
+        userId: req.user.id,
+        amount: parseFloat(amount),
+        baselineCalculationId: baselineCalculationId
+          ? parseInt(baselineCalculationId)
+          : null,
+        improvedCalculationId: improvedCalculationId
+          ? parseInt(improvedCalculationId)
+          : null,
+      },
+    });
+
+    res.status(201).json(offset);
+  } catch (error) {
+    console.error("Create offset error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/api/offsets", authenticateToken, async (req, res) => {
+  try {
+    const offsets = await prisma.offset.findMany({
+      where: { userId: req.user.id },
+      include: {
+        baselineCalculation: {
+          select: { id: true, type: true, emissions: true, carbonOffset: true, createdAt: true },
+        },
+        improvedCalculation: {
+          select: { id: true, type: true, emissions: true, carbonOffset: true, createdAt: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(offsets);
+  } catch (error) {
+    console.error("Get offsets error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // Admin routes
 app.get("/api/admin/users", authenticateToken, async (req, res) => {
   try {
@@ -200,6 +294,79 @@ app.get("/api/admin/users", authenticateToken, async (req, res) => {
     res.json(users);
   } catch (error) {
     console.error("Get users error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Admin create user
+app.post("/api/admin/users", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") return res.sendStatus(403);
+    const { name, email, password, organization, role } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Name, email and password are required" });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already in use" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newUser = await prisma.user.create({
+      data: {
+        name,
+        email,
+        password: hashedPassword,
+        organization: organization || null,
+        role: role === "ADMIN" ? "ADMIN" : "USER",
+      },
+    });
+    res.status(201).json(newUser);
+  } catch (error) {
+    console.error("Admin create user error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Admin delete user (cascades related records)
+app.delete("/api/admin/users/:id", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") return res.sendStatus(403);
+    const id = parseInt(req.params.id);
+
+    // Remove related records first to avoid FK violations
+    await prisma.offset.deleteMany({ where: { userId: id } });
+    await prisma.calculation.deleteMany({ where: { userId: id } });
+    await prisma.user.delete({ where: { id } });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Admin delete user error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Admin reset user password
+app.post("/api/admin/users/:id/reset-password", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "ADMIN") return res.sendStatus(403);
+    const id = parseInt(req.params.id);
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ success: true, message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Admin reset password error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

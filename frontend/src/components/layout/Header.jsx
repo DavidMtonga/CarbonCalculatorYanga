@@ -19,7 +19,7 @@ export default function Header() {
               </Link>
             )}
             <span>{user.email}</span>
-            <Button onClick={logout} className="bg-white text-green-600">
+            <Button onClick={logout} className="bg-green-400 border text-green-600">
               Logout
             </Button>
           </div>

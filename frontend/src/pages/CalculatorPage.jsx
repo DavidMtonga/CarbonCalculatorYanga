@@ -9,6 +9,7 @@ import CarbonOffsetCards from "../components/layout/CarbonOffsetCards";
 import Footer from "../components/layout/Footer";
 import VerificationPartners from "../components/layout/VerificationPartners";
 import PartnersScroller from "../components/layout/PartnersScroller";
+import Button from "../components/ui/Button";
 
 export default function CalculatorPage() {
   const { user } = useAuth();
@@ -34,37 +35,7 @@ export default function CalculatorPage() {
       const calculationResult = calculateSection(type, calculationData.data);
       setResults(calculationResult);
 
-      // Save to backend if user is logged in
-      if (user) {
-        try {
-          const payload = {
-            type: type.toUpperCase(),
-            emissions:
-              calculationResult.total > 0 ? calculationResult.total : 0,
-            carbonOffset:
-              calculationResult.total < 0
-                ? Math.abs(calculationResult.total)
-                : 0,
-            data: {
-              cookingDuration:
-                parseFloat(calculationData.data.cookingDuration) || 0,
-              cookingMeals: parseInt(calculationData.data.cookingMeals) || 0,
-              fuelType: calculationData.data.fuelType || "unknown",
-              charcoalUsed: parseFloat(calculationData.data.charcoalUsed) || 0,
-            },
-          };
-
-          console.log("Sending payload:", payload);
-
-          await saveCalculation(payload);
-          setSaveSuccess(true);
-        } catch (error) {
-          console.error("Save error:", error);
-          setSaveError(
-            error.message || "Failed to save calculation. Please try again."
-          );
-        }
-      }
+      // Do not auto-save to avoid duplicate entries; saving happens via the button in results
     } catch (error) {
       console.error("Calculation error:", error);
       setSaveError("An error occurred during calculation. Please try again.");
@@ -129,6 +100,23 @@ export default function CalculatorPage() {
     navigate("/dashboard");
   };
 
+  const handleOffsetEmissions = () => {
+    // Navigate to offset page with current calculation results
+    navigate("/offset", {
+      state: {
+        baseline: {
+          total: results.total,
+          data: {
+            fuelType: results.fuelType,
+            cookingDuration: results.cookingDuration,
+            cookingMeals: results.cookingMeals,
+            charcoalUsed: results.charcoalUsed,
+          },
+        },
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -178,6 +166,35 @@ export default function CalculatorPage() {
                   onSave={user ? handleSave : null}
                   saveSuccess={saveSuccess}
                 />
+                
+                {/* Offset Emissions Button */}
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    {user && (
+                      <Button
+                        onClick={handleOffsetEmissions}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                      >
+                        <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        Offset Emissions
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => setResults(null)}
+                      variant="outline"
+                      className="px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                    >
+                      Calculate Again
+                    </Button>
+                  </div>
+                  {!user && (
+                    <div className="mt-3 text-center text-sm text-gray-600">
+                      <p>Login to save calculations and access offset features</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </div>
