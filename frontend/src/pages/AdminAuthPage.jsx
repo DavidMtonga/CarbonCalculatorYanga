@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { registerAdmin } from "../services/adminService";
+import { ZAMBIA_PROVINCES } from "../constants/provinces";
 
 export default function AdminAuthPage() {
   const { register } = useAuth();
@@ -9,6 +10,7 @@ export default function AdminAuthPage() {
     email: "",
     password: "",
     organization: "",
+    province: "",
     adminSecret: "",
   });
   const [submitting, setSubmitting] = useState(false);
@@ -65,6 +67,19 @@ export default function AdminAuthPage() {
             onChange={(e) => setForm({ ...form, password: e.target.value })}
             required
           />
+          <select
+            className="w-full p-3 border rounded bg-white"
+            value={form.province}
+            onChange={(e) => setForm({ ...form, province: e.target.value })}
+            required
+          >
+            <option value="">Select your province</option>
+            {ZAMBIA_PROVINCES.map((province) => (
+              <option key={province} value={province}>
+                {province}
+              </option>
+            ))}
+          </select>
           <input
             className="w-full p-3 border rounded"
             placeholder="Organization (optional)"

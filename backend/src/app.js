@@ -80,7 +80,7 @@ app.post("/api/auth/register", async (req, res) => {
 // Secure Admin registration with secret
 app.post("/api/auth/register-admin", async (req, res) => {
   try {
-    const { name, email, password, organization, adminSecret } = req.body;
+    const { name, email, password, organization, province, adminSecret } = req.body;
     if (adminSecret !== process.env.ADMIN_REGISTRATION_SECRET) {
       return res.status(403).json({ error: "Invalid admin registration secret" });
     }
@@ -101,6 +101,7 @@ app.post("/api/auth/register-admin", async (req, res) => {
         email,
         password: hashedPassword,
         organization: organization || null,
+        province: province || null,
         role: "ADMIN",
       },
     });
@@ -113,7 +114,14 @@ app.post("/api/auth/register-admin", async (req, res) => {
 
     res.json({
       token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role },
+      user: { 
+        id: user.id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        organization: user.organization,
+        province: user.province,
+      },
     });
   } catch (error) {
     console.error("Admin registration error:", error);
@@ -162,6 +170,8 @@ app.post("/api/auth/login", async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        organization: user.organization,
+        province: user.province,
       },
     });
   } catch (error) {

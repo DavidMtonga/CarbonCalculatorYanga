@@ -22,12 +22,13 @@ export const exportCalculations = async () => {
   return response.data;
 };
 
-export const registerAdmin = async ({ name, email, password, organization, adminSecret }) => {
+export const registerAdmin = async ({ name, email, password, organization, province, adminSecret }) => {
   const response = await api.post("/auth/register-admin", {
     name,
     email,
     password,
     organization,
+    province,
     adminSecret,
   });
   return response.data;
@@ -47,5 +48,10 @@ export const resetUserPassword = async (userId, newPassword) => {
   const response = await api.post(`/admin/users/${userId}/reset-password`, {
     newPassword
   });
+  return response.data;
+};
+
+export const getProvinceAnalytics = async () => {
+  const response = await api.get("/admin/province-analytics");
   return response.data;
 };

@@ -1,19 +1,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap");
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 body {
   font-family: "Poppins", sans-serif;
-}
-
-@keyframes marquee {
-  0% { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-
-.animate-marquee {
-  animation: marquee 25s linear infinite;
-  display: inline-block;
-  white-space: nowrap;
 }
 
 @layer components {
@@ -29,4 +20,3 @@ body {
     @apply bg-green-600 text-white;
   }
 }
-

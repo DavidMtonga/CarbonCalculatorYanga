@@ -105,8 +105,13 @@ export default function UserDashboard() {
             Carbon Footprint Dashboard
           </h1>
           <p className="text-gray-600">
-            Welcome back, {user?.name || user?.email || "User"}! Track your
-            environmental impact.
+            Welcome back, {user?.name || user?.email || "User"}! 
+            {user?.province && (
+              <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                📍 {user.province}
+              </span>
+            )}
+            Track your environmental impact.
           </p>
         </div>
 

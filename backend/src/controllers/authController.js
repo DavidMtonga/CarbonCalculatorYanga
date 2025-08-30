@@ -7,7 +7,7 @@ const prisma = new PrismaClient();
 
 const register = async (req, res, next) => {
   try {
-    const { name, email, password, organization } = req.body;
+    const { name, email, password, organization, province } = req.body;
 
     if (!name || !email || !password) {
       throw new ApiError(400, "Name, email and password are required");
@@ -26,6 +26,7 @@ const register = async (req, res, next) => {
         email,
         password: hashedPassword,
         organization,
+        province,
         role: "USER",
       },
     });
@@ -44,6 +45,7 @@ const register = async (req, res, next) => {
         email: user.email,
         role: user.role,
         organization: user.organization,
+        province: user.province,
       },
     });
   } catch (error) {
@@ -88,6 +90,7 @@ const login = async (req, res, next) => {
         email: user.email,
         role: user.role,
         organization: user.organization,
+        province: user.province,
       },
     });
   } catch (error) {

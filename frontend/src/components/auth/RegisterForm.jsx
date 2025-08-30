@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import Button from "../ui/Button";
+import { ZAMBIA_PROVINCES } from "../../constants/provinces";
 
 export default function RegisterForm() {
   const { register } = useAuth();
@@ -9,6 +10,7 @@ export default function RegisterForm() {
     email: "",
     password: "",
     organization: "",
+    province: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -78,6 +80,26 @@ export default function RegisterForm() {
           className="w-full p-2 border rounded"
           required
         />
+      </div>
+      <div>
+        <label htmlFor="province" className="block mb-1">
+          Province *
+        </label>
+        <select
+          id="province"
+          name="province"
+          value={formData.province}
+          onChange={handleChange}
+          className="w-full p-2 border rounded bg-white"
+          required
+        >
+          <option value="">Select your province</option>
+          {ZAMBIA_PROVINCES.map((province) => (
+            <option key={province} value={province}>
+              {province}
+            </option>
+          ))}
+        </select>
       </div>
       <div>
         <label htmlFor="organization" className="block mb-1">

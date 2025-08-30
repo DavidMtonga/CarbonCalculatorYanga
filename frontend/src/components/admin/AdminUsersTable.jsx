@@ -2,11 +2,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllUsers, createUserAsAdmin, deleteUserAsAdmin, resetUserPassword } from "../../services/adminService";
 import { useState } from "react";
 import Button from "../ui/Button";
+import { ZAMBIA_PROVINCES } from "../../constants/provinces";
 
 export default function AdminUsersTable() {
   const queryClient = useQueryClient();
   const { data: users, isLoading } = useQuery(["adminUsers"], getAllUsers);
-  const [form, setForm] = useState({ name: "", email: "", password: "", organization: "", role: "USER" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", organization: "", province: "", role: "USER" });
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [resetPasswordId, setResetPasswordId] = useState(null);
@@ -25,7 +26,7 @@ export default function AdminUsersTable() {
       setSubmitting(true);
       setMessage({ type: "", text: "" });
       await createUserAsAdmin(form);
-      setForm({ name: "", email: "", password: "", organization: "", role: "USER" });
+      setForm({ name: "", email: "", password: "", organization: "", province: "", role: "USER" });
       queryClient.invalidateQueries(["adminUsers"]);
       setMessage({ type: "success", text: "User created successfully!" });
     } catch (e) {
@@ -36,29 +37,26 @@ export default function AdminUsersTable() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Delete this user? This action cannot be undone and will remove all their calculations and offsets.")) return;
-    try {
-      setMessage({ type: "", text: "" });
-      await deleteUserAsAdmin(id);
-      queryClient.invalidateQueries(["adminUsers"]);
-      setMessage({ type: "success", text: "User deleted successfully!" });
-    } catch (e) {
-      setMessage({ type: "error", text: e?.response?.data?.error || e.message || "Failed to delete user" });
+    if (window.confirm("Are you sure you want to delete this user?")) {
+      try {
+        await deleteUserAsAdmin(id);
+        queryClient.invalidateQueries(["adminUsers"]);
+        setMessage({ type: "success", text: "User deleted successfully!" });
+      } catch (e) {
+        setMessage({ type: "error", text: e?.response?.data?.error || e.message || "Failed to delete user" });
+      }
     }
   };
 
   const handleResetPassword = async (userId) => {
-    if (!newPassword || newPassword.length < 6) {
-      setMessage({ type: "error", text: "Password must be at least 6 characters long" });
+    if (!newPassword.trim()) {
+      setMessage({ type: "error", text: "Please enter a new password" });
       return;
     }
-    
     try {
-      setMessage({ type: "", text: "" });
       await resetUserPassword(userId, newPassword);
       setResetPasswordId(null);
       setNewPassword("");
-      queryClient.invalidateQueries(["adminUsers"]);
       setMessage({ type: "success", text: "Password reset successfully!" });
     } catch (e) {
       setMessage({ type: "error", text: e?.response?.data?.error || e.message || "Failed to reset password" });
@@ -67,23 +65,13 @@ export default function AdminUsersTable() {
 
   return (
     <div className="p-6">
-      {/* Message Display */}
       {message.text && (
-        <div className={`mb-6 p-4 rounded-lg border ${
+        <div className={`mb-4 p-3 rounded-lg ${
           message.type === "success" 
-            ? "bg-green-50 text-green-700 border-green-200" 
-            : "bg-red-50 text-red-700 border-red-200"
+            ? "bg-green-100 border border-green-300 text-green-700" 
+            : "bg-red-100 border border-red-300 text-red-700"
         }`}>
-          <div className="flex items-center">
-            <svg className={`w-5 h-5 mr-2 ${message.type === "success" ? "text-green-500" : "text-red-500"}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {message.type === "success" ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              )}
-            </svg>
-            {message.text}
-          </div>
+          {message.text}
         </div>
       )}
 
@@ -98,7 +86,7 @@ export default function AdminUsersTable() {
           <h3 className="text-lg font-semibold text-gray-900">Create New User</h3>
         </div>
         
-        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <form onSubmit={handleCreate} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
           <input 
             className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
             placeholder="Full Name" 
@@ -122,6 +110,19 @@ export default function AdminUsersTable() {
             onChange={(e) => setForm({ ...form, password: e.target.value })} 
             required 
           />
+          <select 
+            className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white" 
+            value={form.province} 
+            onChange={(e) => setForm({ ...form, province: e.target.value })}
+            required
+          >
+            <option value="">Select Province</option>
+            {ZAMBIA_PROVINCES.map((province) => (
+              <option key={province} value={province}>
+                {province}
+              </option>
+            ))}
+          </select>
           <input 
             className="border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
             placeholder="Organization (Optional)" 
@@ -155,39 +156,41 @@ export default function AdminUsersTable() {
 
       {/* Users Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">User Management</h3>
-          <p className="text-sm text-gray-600 mt-1">Manage all registered users and their accounts</p>
-        </div>
-        
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   User
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Province
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Organization
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Role
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Joined
                 </th>
-                <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {users?.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50 transition-colors duration-150">
+                <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                        {user.name.charAt(0).toUpperCase()}
+                      <div className="flex-shrink-0 h-10 w-10">
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                          <span className="text-sm font-medium text-white">
+                            {user.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
                       </div>
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{user.name}</div>
@@ -195,8 +198,13 @@ export default function AdminUsersTable() {
                       </div>
                     </div>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {user.province || "Not specified"}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {user.organization || "-"}
+                    {user.organization || "—"}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
@@ -204,75 +212,26 @@ export default function AdminUsersTable() {
                         ? "bg-purple-100 text-purple-800" 
                         : "bg-green-100 text-green-800"
                     }`}>
-                      {user.role === "ADMIN" ? (
-                        <>
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                          </svg>
-                          Admin
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          User
-                        </>
-                      )}
+                      {user.role}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Active
-                    </span>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(user.createdAt).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center space-x-2">
-                      {/* Password Reset */}
-                      {resetPasswordId === user.id ? (
-                        <div className="flex items-center space-x-2">
-                          <input
-                            type="password"
-                            placeholder="New password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="border border-gray-300 px-3 py-1 rounded text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          />
-                          <Button
-                            onClick={() => handleResetPassword(user.id)}
-                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            onClick={() => {
-                              setResetPasswordId(null);
-                              setNewPassword("");
-                            }}
-                            className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : (
-                        <Button
-                          onClick={() => setResetPasswordId(user.id)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm"
-                        >
-                          Reset Password
-                        </Button>
-                      )}
-                      
-                      {/* Delete User */}
-                      <Button
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => setResetPasswordId(user.id)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                      >
+                        Reset Password
+                      </button>
+                      <button
                         onClick={() => handleDelete(user.id)}
-                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                        className="text-red-600 hover:text-red-900"
                       >
                         Delete
-                      </Button>
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -280,17 +239,42 @@ export default function AdminUsersTable() {
             </tbody>
           </table>
         </div>
-        
-        {(!users || users.length === 0) && (
-          <div className="text-center py-12">
-            <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-            </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No users found</h3>
-            <p className="mt-1 text-sm text-gray-500">Get started by creating a new user account.</p>
-          </div>
-        )}
       </div>
+
+      {/* Reset Password Modal */}
+      {resetPasswordId && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Reset Password</h3>
+              <input
+                type="password"
+                placeholder="New Password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full p-2 border rounded mb-4"
+              />
+              <div className="flex justify-end space-x-2">
+                <button
+                  onClick={() => {
+                    setResetPasswordId(null);
+                    setNewPassword("");
+                  }}
+                  className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleResetPassword(resetPasswordId)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
