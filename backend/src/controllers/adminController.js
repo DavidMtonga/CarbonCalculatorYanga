@@ -34,13 +34,26 @@ const getAllCalculations = async (req, res, next) => {
           select: {
             name: true,
             email: true,
+            province: true,
           },
         },
+        offsetsAsBaseline: { select: { amount: true } },
+        offsetsAsImproved: { select: { amount: true } },
       },
       orderBy: { createdAt: "desc" },
       take: 50,
     });
-    res.json(calculations);
+
+    const withRecordedOffsets = calculations.map((c) => {
+      const baselineSum = (c.offsetsAsBaseline || []).reduce((s, o) => s + (o.amount || 0), 0);
+      const improvedSum = (c.offsetsAsImproved || []).reduce((s, o) => s + (o.amount || 0), 0);
+      const recordedOffset = baselineSum + improvedSum;
+      const totalOffset = (c.carbonOffset || 0) + recordedOffset;
+      const { offsetsAsBaseline, offsetsAsImproved, ...rest } = c;
+      return { ...rest, recordedOffset, totalOffset };
+    });
+
+    res.json(withRecordedOffsets);
   } catch (error) {
     next(error);
   }
@@ -62,8 +75,11 @@ const getSystemStats = async (req, res, next) => {
       _sum: { emissions: true },
     });
 
-    const offsetAgg = await prisma.calculation.aggregate({
+    const calcOffsetAgg = await prisma.calculation.aggregate({
       _sum: { carbonOffset: true },
+    });
+    const recordedOffsetAgg = await prisma.offset.aggregate({
+      _sum: { amount: true },
     });
 
     res.json({
@@ -71,7 +87,9 @@ const getSystemStats = async (req, res, next) => {
       totalCalculations,
       activeUsers,
       totalEmissions: emissionsAgg._sum.emissions || 0,
-      totalOffsets: offsetAgg._sum.carbonOffset || 0,
+      totalOffsets:
+        (calcOffsetAgg._sum.carbonOffset || 0) +
+        (recordedOffsetAgg._sum.amount || 0),
     });
   } catch (error) {
     next(error);
@@ -89,29 +107,37 @@ const exportData = async (req, res, next) => {
             organization: true,
           },
         },
+        offsetsAsBaseline: { select: { amount: true } },
+        offsetsAsImproved: { select: { amount: true } },
       },
+      orderBy: { createdAt: "desc" },
     });
 
-    // Convert to CSV
-    const csvData = calculations.map((c) => ({
+    const rows = calculations.map((c) => {
+      const baselineSum = (c.offsetsAsBaseline || []).reduce((s, o) => s + (o.amount || 0), 0);
+      const improvedSum = (c.offsetsAsImproved || []).reduce((s, o) => s + (o.amount || 0), 0);
+      const recordedOffset = baselineSum + improvedSum;
+      const totalOffset = (c.carbonOffset || 0) + recordedOffset;
+      return {
       id: c.id,
       userName: c.user.name,
       userEmail: c.user.email,
       userOrganization: c.user.organization || "",
       type: c.type,
       emissions: c.emissions,
-      carbonOffset: c.carbonOffset,
+        calcOffset: c.carbonOffset,
+        recordedOffset,
+        totalOffset,
       createdAt: c.createdAt.toISOString(),
-    }));
+      };
+    });
 
-    // Set headers for CSV download
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
       "attachment; filename=calculations.csv"
     );
 
-    // Convert to CSV
     const csvString = [
       [
         "ID",
@@ -120,17 +146,21 @@ const exportData = async (req, res, next) => {
         "Organization",
         "Calculation Type",
         "Emissions (kg CO₂e)",
-        "Carbon Offset (kg CO₂e)",
+        "Calc Offset (kg CO₂e)",
+        "Recorded Offsets (kg CO₂e)",
+        "Total Offset (kg CO₂e)",
         "Date",
       ],
-      ...csvData.map((item) => [
+      ...rows.map((item) => [
         item.id,
         `"${item.userName}"`,
         item.userEmail,
         `"${item.userOrganization}"`,
         item.type,
         item.emissions,
-        item.carbonOffset,
+        item.calcOffset,
+        item.recordedOffset,
+        item.totalOffset,
         item.createdAt,
       ]),
     ]
@@ -145,87 +175,69 @@ const exportData = async (req, res, next) => {
 
 const getProvinceAnalytics = async (req, res, next) => {
   try {
-    // Get all provinces with user counts and calculations
-    const provinceData = await prisma.user.groupBy({
+    // User counts by province
+    const provinceUsers = await prisma.user.groupBy({
       by: ['province'],
-      _count: {
-        id: true,
-      },
-      where: {
-        province: {
-          not: null,
-        },
-      },
+      _count: { id: true },
+      where: { province: { not: null } },
     });
 
-    // Get emissions and offsets by province
-    const provinceCalculations = await prisma.calculation.groupBy({
-      by: ['user'],
-      _sum: {
-        emissions: true,
-        carbonOffset: true,
-      },
-      where: {
-        user: {
-          province: {
-            not: null,
-          },
-        },
-      },
+    // Emissions and calc offsets per province via Calculation joined with User
+    const calcAgg = await prisma.calculation.groupBy({
+      by: ['userId'],
+      _sum: { emissions: true, carbonOffset: true },
     });
 
-    // Get user details for calculations
-    const usersWithCalculations = await prisma.user.findMany({
-      where: {
-        id: {
-          in: provinceCalculations.map(c => c.user),
-        },
-      },
-      select: {
-        id: true,
-        province: true,
-      },
+    const userIds = calcAgg.map(c => c.userId);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, province: true },
     });
+    const userProvince = Object.fromEntries(users.map(u => [u.id, u.province]));
 
-    // Create a map of user ID to province
-    const userProvinceMap = {};
-    usersWithCalculations.forEach(user => {
-      userProvinceMap[user.id] = user.province;
-    });
-
-    // Aggregate calculations by province
-    const provinceStats = {};
-    provinceCalculations.forEach(calc => {
-      const province = userProvinceMap[calc.user];
-      if (province) {
-        if (!provinceStats[province]) {
-          provinceStats[province] = {
-            totalEmissions: 0,
-            totalOffsets: 0,
-          };
-        }
-        provinceStats[province].totalEmissions += calc._sum.emissions || 0;
-        provinceStats[province].totalOffsets += calc._sum.carbonOffset || 0;
+    const provinceTotals = {};
+    calcAgg.forEach(c => {
+      const province = userProvince[c.userId];
+      if (!province) return;
+      if (!provinceTotals[province]) {
+        provinceTotals[province] = { emissions: 0, calcOffset: 0 };
       }
+      provinceTotals[province].emissions += c._sum.emissions || 0;
+      provinceTotals[province].calcOffset += c._sum.carbonOffset || 0;
     });
 
-    // Combine data
-    const provinces = provinceData.map(province => ({
-      name: province.province,
-      userCount: province._count.id,
-      totalEmissions: (provinceStats[province.province]?.totalEmissions || 0) / 1000, // Convert to tonnes
-      totalOffsets: (provinceStats[province.province]?.totalOffsets || 0) / 1000, // Convert to tonnes
-    }));
-
-    // Get overall totals
-    const totalEmissions = provinces.reduce((sum, p) => sum + p.totalEmissions, 0);
-    const totalOffsets = provinces.reduce((sum, p) => sum + p.totalOffsets, 0);
-
-    res.json({
-      provinces,
-      totalEmissions,
-      totalOffsets,
+    // Recorded offsets per province via Offset joined with User
+    const offsetAgg = await prisma.offset.groupBy({
+      by: ['userId'],
+      _sum: { amount: true },
     });
+    const offsetUserIds = offsetAgg.map(o => o.userId);
+    const offsetUsers = await prisma.user.findMany({
+      where: { id: { in: offsetUserIds } },
+      select: { id: true, province: true },
+    });
+    const offsetUserProvince = Object.fromEntries(offsetUsers.map(u => [u.id, u.province]));
+    offsetAgg.forEach(o => {
+      const province = offsetUserProvince[o.userId];
+      if (!province) return;
+      if (!provinceTotals[province]) provinceTotals[province] = { emissions: 0, calcOffset: 0 };
+      provinceTotals[province].calcOffset += o._sum.amount || 0;
+    });
+
+    const provinces = provinceUsers.map(pu => {
+      const totals = provinceTotals[pu.province] || { emissions: 0, calcOffset: 0 };
+      return {
+        name: pu.province,
+        userCount: pu._count.id,
+        totalEmissions: (totals.emissions || 0) / 1000,
+        totalOffsets: (totals.calcOffset || 0) / 1000,
+      };
+    });
+
+    const totalEmissions = provinces.reduce((s, p) => s + (p.totalEmissions || 0), 0);
+    const totalOffsets = provinces.reduce((s, p) => s + (p.totalOffsets || 0), 0);
+
+    res.json({ provinces, totalEmissions, totalOffsets });
   } catch (error) {
     next(error);
   }

@@ -16,7 +16,17 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     if (token) {
       const userData = JSON.parse(atob(token.split(".")[1]));
-      setUser(userData);
+      // Prefer server-returned user payload from storage if present
+      try {
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+          setUser(JSON.parse(storedUser));
+        } else {
+          setUser(userData);
+        }
+      } catch {
+        setUser(userData);
+      }
     }
   }, [token]);
 
@@ -24,6 +34,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { token, user } = await apiLogin(email, password);
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
       setToken(token);
       setUser(user);
       // Redirect based on user role
@@ -41,6 +52,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { token, user } = await apiRegister(userData);
       localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(user));
       setToken(token);
       setUser(user);
       // Redirect based on user role
@@ -57,6 +69,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     apiLogout();
     localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setToken(null);
     setUser(null);
     navigate("/");

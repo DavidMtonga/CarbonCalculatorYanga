@@ -23,7 +23,7 @@ ChartJS.register(
   ArcElement
 );
 
-export default function ProvinceAnalytics() {
+export default function ProvinceAnalytics({ selectedProvince = "", onSelectProvince }) {
   const { data: analytics, isLoading, error } = useQuery(
     ["provinceAnalytics"],
     getProvinceAnalytics
@@ -184,6 +184,38 @@ export default function ProvinceAnalytics() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Province tiles */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {provinces.map((p) => (
+          <button
+            type="button"
+            key={p.name}
+            onClick={() => onSelectProvince && onSelectProvince(p.name === selectedProvince ? "" : p.name)}
+            className={`text-left bg-white p-5 rounded-xl shadow-sm border transition ${
+              selectedProvince === p.name ? "border-blue-500 ring-2 ring-blue-200" : "border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center">
+                <div className="w-3 h-3 rounded-full mr-2" style={{ backgroundColor: PROVINCE_COLORS[p.name] || "#8884d8" }}></div>
+                <h4 className="text-base font-semibold text-gray-900">{p.name}</h4>
+              </div>
+              <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700">{p.userCount} users</span>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-[11px] text-gray-500">Emissions</div>
+                <div className="text-lg font-semibold text-gray-900">{(p.totalEmissions ?? 0).toFixed(2)}t</div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3">
+                <div className="text-[11px] text-gray-500">Offsets</div>
+                <div className="text-lg font-semibold text-gray-900">{(p.totalOffsets ?? 0).toFixed(2)}t</div>
+              </div>
+            </div>
+          </button>
+        ))}
       </div>
 
       {/* Charts */}

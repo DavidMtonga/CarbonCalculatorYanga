@@ -12,6 +12,7 @@ import Button from "../components/ui/Button";
 export default function AdminPage() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("users");
+  const [selectedProvince, setSelectedProvince] = useState("");
   const { data: stats, isLoading } = useQuery(["adminStats"], getAdminStats);
 
   const handleExport = async () => {
@@ -183,7 +184,7 @@ export default function AdminPage() {
             <AdminUsersTable />
           ) : activeTab === "calculations" ? (
             <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900">Calculation Data</h3>
                 <Button
                   onClick={handleExport}
@@ -195,11 +196,11 @@ export default function AdminPage() {
                   Export to CSV
                 </Button>
               </div>
-              <AdminCalculationsTable />
+              <AdminCalculationsTable selectedProvince={selectedProvince} />
             </div>
           ) : (
             <div className="p-6">
-              <ProvinceAnalytics />
+              <ProvinceAnalytics selectedProvince={selectedProvince} onSelectProvince={setSelectedProvince} />
             </div>
           )}
         </div>

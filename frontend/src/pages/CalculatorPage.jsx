@@ -119,12 +119,12 @@ export default function CalculatorPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-green-700 mb-2">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className="mb-6 sm:mb-8 text-center">
+          <h1 className="text-2xl sm:text-3xl font-bold text-green-700 mb-2">
             Carbon Calculator Yanga
           </h1>
-          <p className="text-gray-600">
+          <p className="text-gray-600 text-sm sm:text-base">
             Calculate your carbon footprint with verified methodologies
           </p>
         </div>
@@ -141,16 +141,16 @@ export default function CalculatorPage() {
           </div>
         )}
 
-        <div className="flex flex-col lg:flex-row gap-8 items-start">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 items-start">
           {/* Main Calculator Section */}
-          <div className="flex-1 max-w-4xl">
+          <div className="flex-1 w-full max-w-4xl">
             <CalculatorTabs
               activeTab={currentSection}
               onTabChange={setCurrentSection}
             />
 
             {!results ? (
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
                 <CalculatorForm
                   activeTab={currentSection}
                   onCalculate={handleCalculate}
@@ -158,7 +158,7 @@ export default function CalculatorPage() {
                 />
               </div>
             ) : (
-              <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
                 <CalculatorResults
                   results={results}
                   activeTab={currentSection}
@@ -168,12 +168,12 @@ export default function CalculatorPage() {
                 />
                 
                 {/* Offset Emissions Button */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
+                <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-200">
                   <div className="flex flex-col sm:flex-row gap-3 justify-center">
                     {user && (
                       <Button
                         onClick={handleOffsetEmissions}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-3 rounded-lg font-semibold transition-colors duration-200 w-full sm:w-auto"
                       >
                         <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -184,13 +184,13 @@ export default function CalculatorPage() {
                     <Button
                       onClick={() => setResults(null)}
                       variant="outline"
-                      className="px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                      className="px-5 sm:px-6 py-3 rounded-lg font-semibold transition-colors duration-200 w-full sm:w-auto"
                     >
                       Calculate Again
                     </Button>
                   </div>
                   {!user && (
-                    <div className="mt-3 text-center text-sm text-gray-600">
+                    <div className="mt-3 text-center text-xs sm:text-sm text-gray-600">
                       <p>Login to save calculations and access offset features</p>
                     </div>
                   )}
@@ -200,7 +200,7 @@ export default function CalculatorPage() {
           </div>
 
           {/* Carbon Offset Cards - Sidebar */}
-          <div className="lg:sticky lg:top-8">
+          <div className="w-full lg:w-auto lg:sticky lg:top-8">
             <CarbonOffsetCards />
           </div>
         </div>

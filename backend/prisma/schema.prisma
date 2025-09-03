@@ -68,6 +68,7 @@ model Offset {
   amount                 Float
   baselineCalculationId  Int?
   improvedCalculationId  Int?
+  details                Json?
   createdAt              DateTime     @default(now())
   updatedAt              DateTime     @updatedAt
 

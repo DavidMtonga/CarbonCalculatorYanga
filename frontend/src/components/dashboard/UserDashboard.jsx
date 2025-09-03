@@ -78,6 +78,10 @@ export default function UserDashboard() {
     navigate("/calculator");
   };
 
+  const handleCalculateOffsets = () => {
+    navigate("/offset");
+  };
+
   const handleStartCalculating = () => {
     navigate("/calculator");
   };
@@ -205,7 +209,7 @@ export default function UserDashboard() {
 
         {/* Calculation History Section */}
         <div className="mb-8">
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
             <div>
               <h2 className="text-xl font-semibold text-gray-900">
                 Calculation History
@@ -214,25 +218,46 @@ export default function UserDashboard() {
                 Track all your carbon footprint calculations
               </p>
             </div>
-            <button
-              onClick={handleNewCalculation}
-              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
-            >
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <button
+                onClick={handleNewCalculation}
+                className="bg-green-600 hover:bg-green-700 text-white px-5 sm:px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 w-full sm:w-auto"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth="2"
-                  d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-                />
-              </svg>
-              New Calculation
-            </button>
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                  />
+                </svg>
+                New Calculation
+              </button>
+              <button
+                onClick={handleCalculateOffsets}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-5 sm:px-6 py-2 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2 w-full sm:w-auto"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M13 10V3L4 14h7v7l9-11h-7z"
+                  />
+                </svg>
+                Calculate Offsets
+              </button>
+            </div>
           </div>
 
           <UserTable calculations={historyRows} isLoading={isLoading} />

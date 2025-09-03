@@ -4,6 +4,7 @@ const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const adminController = require("./controllers/adminController");
 
 const prisma = new PrismaClient();
 const app = express();
@@ -28,7 +29,7 @@ const authenticateToken = (req, res, next) => {
 // Routes
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { name, email, password, organization } = req.body;
+    const { name, email, password, organization, province } = req.body;
 
     // Validate input
     if (!name || !email || !password) {
@@ -51,6 +52,7 @@ app.post("/api/auth/register", async (req, res) => {
         email,
         password: hashedPassword,
         organization: organization || null,
+        province: province || null,
         role: "USER",
       },
     });
@@ -69,6 +71,8 @@ app.post("/api/auth/register", async (req, res) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        organization: user.organization,
+        province: user.province,
       },
     });
   } catch (error) {
@@ -234,7 +238,7 @@ app.get("/api/calculations", authenticateToken, async (req, res) => {
 // Offsets routes
 app.post("/api/offsets", authenticateToken, async (req, res) => {
   try {
-    const { amount, baselineCalculationId, improvedCalculationId } = req.body;
+    const { amount, baselineCalculationId, improvedCalculationId, details } = req.body;
 
     if (amount === undefined || isNaN(parseFloat(amount)) || parseFloat(amount) < 0) {
       return res.status(400).json({ error: "Valid numeric 'amount' is required" });
@@ -250,6 +254,7 @@ app.post("/api/offsets", authenticateToken, async (req, res) => {
         improvedCalculationId: improvedCalculationId
           ? parseInt(improvedCalculationId)
           : null,
+        details: details || null,
       },
     });
 
@@ -282,30 +287,9 @@ app.get("/api/offsets", authenticateToken, async (req, res) => {
 });
 
 // Admin routes
-app.get("/api/admin/users", authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== "ADMIN") return res.sendStatus(403);
-
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        organization: true,
-        role: true,
-        lastLogin: true,
-        createdAt: true,
-        _count: {
-          select: { calculations: true },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    res.json(users);
-  } catch (error) {
-    console.error("Get users error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+app.get("/api/admin/users", authenticateToken, (req, res, next) => {
+  if (req.user.role !== "ADMIN") return res.sendStatus(403);
+  return adminController.getAllUsers(req, res, next);
 });
 
 // Admin create user
@@ -381,128 +365,25 @@ app.post("/api/admin/users/:id/reset-password", authenticateToken, async (req, r
   }
 });
 
-app.get("/api/admin/calculations", authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== "ADMIN") return res.sendStatus(403);
-
-    const calculations = await prisma.calculation.findMany({
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    });
-    res.json(calculations);
-  } catch (error) {
-    console.error("Get all calculations error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+app.get("/api/admin/calculations", authenticateToken, (req, res, next) => {
+  if (req.user.role !== "ADMIN") return res.sendStatus(403);
+  return adminController.getAllCalculations(req, res, next);
 });
 
-app.get("/api/admin/stats", authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== "ADMIN") return res.sendStatus(403);
-
-    const totalUsers = await prisma.user.count();
-    const activeUsers = await prisma.user.count({
-      where: {
-        lastLogin: {
-          gte: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
-        },
-      },
-    });
-
-    const emissionsAgg = await prisma.calculation.aggregate({
-      _sum: { emissions: true },
-    });
-
-    const offsetAgg = await prisma.calculation.aggregate({
-      _sum: { carbonOffset: true },
-    });
-
-    res.json({
-      totalUsers,
-      activeUsers,
-      totalEmissions: emissionsAgg._sum.emissions || 0,
-      totalOffset: offsetAgg._sum.carbonOffset || 0,
-    });
-  } catch (error) {
-    console.error("Get stats error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+app.get("/api/admin/stats", authenticateToken, (req, res, next) => {
+  if (req.user.role !== "ADMIN") return res.sendStatus(403);
+  return adminController.getSystemStats(req, res, next);
 });
 
-app.get("/api/admin/export", authenticateToken, async (req, res) => {
-  try {
-    if (req.user.role !== "ADMIN") return res.sendStatus(403);
+app.get("/api/admin/export", authenticateToken, (req, res, next) => {
+  if (req.user.role !== "ADMIN") return res.sendStatus(403);
+  return adminController.exportData(req, res, next);
+});
 
-    const calculations = await prisma.calculation.findMany({
-      include: {
-        user: {
-          select: {
-            name: true,
-            email: true,
-            organization: true,
-          },
-        },
-      },
-    });
-
-    // Convert to CSV
-    const csvData = calculations.map((c) => ({
-      id: c.id,
-      userName: c.user.name,
-      userEmail: c.user.email,
-      userOrganization: c.user.organization || "",
-      type: c.type,
-      emissions: c.emissions,
-      offset: c.carbonOffset,
-      createdAt: c.createdAt.toISOString(),
-    }));
-
-    // Set headers for CSV download
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader(
-      "Content-Disposition",
-      "attachment; filename=calculations.csv"
-    );
-
-    // Convert to CSV
-    const csvString = [
-      [
-        "ID",
-        "User Name",
-        "User Email",
-        "Organization",
-        "Calculation Type",
-        "Emissions (kg CO₂e)",
-        "Offset (kg CO₂e)",
-        "Date",
-      ],
-      ...csvData.map((item) => [
-        item.id,
-        `"${item.userName}"`,
-        item.userEmail,
-        `"${item.userOrganization}"`,
-        item.type,
-        item.emissions,
-        item.offset,
-        item.createdAt,
-      ]),
-    ]
-      .map((e) => e.join(","))
-      .join("\n");
-
-    res.send(csvString);
-  } catch (error) {
-    console.error("Export error:", error);
-    res.status(500).json({ error: "Internal server error" });
-  }
+// Province analytics
+app.get("/api/admin/province-analytics", authenticateToken, (req, res, next) => {
+  if (req.user.role !== "ADMIN") return res.sendStatus(403);
+  return adminController.getProvinceAnalytics(req, res, next);
 });
 
 module.exports = app;
