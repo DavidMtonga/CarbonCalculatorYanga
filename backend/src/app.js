@@ -9,7 +9,6 @@ const adminController = require("./controllers/adminController");
 const prisma = new PrismaClient();
 const app = express();
 
-// CORS configuration
 const allowedOrigins = [
   process.env.FRONTEND_URL,
   "https://carbon-calculator-yanga-dbvn.vercel.app",
@@ -17,31 +16,13 @@ const allowedOrigins = [
   "http://localhost:3000",
 ].filter(Boolean);
 
-// Manual CORS headers to guarantee preflight success on platforms/proxies
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-    res.header("Vary", "Origin");
-    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-    res.header(
-      "Access-Control-Allow-Headers",
-      "Content-Type, Authorization, accesstoken, refreshtoken"
-    );
-  }
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(204);
-  }
-  next();
-});
-
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow non-browser tools
+    if (!origin) return callback(null, true); // allow tools like Postman
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(null, false);
+    return callback(new Error("Not allowed by CORS"));
   },
-  credentials: false, // we use Authorization header, not cookies
+  credentials: false, // set true if you want cookies/sessions
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
