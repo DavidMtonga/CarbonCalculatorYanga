@@ -1,66 +1,53 @@
 generator client {
-  provider        = "prisma-client-js"
+  provider = "prisma-client-js"
   previewFeatures = ["fullTextSearchPostgres"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
+  id           Int            @id @default(autoincrement())
   name         String
-  email        String        @unique
+  email        String         @unique
   password     String
   organization String?
-  role         Role          @default(USER)
+  province     String?        // Add province field
+  role         Role           @default(USER)
   lastLogin    DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  province     String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
   calculations Calculation[]
   offsets      Offset[]
 }
 
 model Calculation {
-  id                Int             @id @default(autoincrement())
-  userId            Int
-  type              CalculationType @default(COOKING)
-  emissions         Float
-  carbonOffset      Float           @default(0)
-  cookingDuration   Float?
-  cookingMeals      Int?
-  fuelType          String?
-  charcoalUsed      Float?
-  createdAt         DateTime        @default(now())
-  updatedAt         DateTime        @updatedAt
-  user              User            @relation(fields: [userId], references: [id])
-  offsetsAsBaseline Offset[]        @relation("BaselineCalculation")
-  offsetsAsImproved Offset[]        @relation("ImprovedCalculation")
+  id              Int              @id @default(autoincrement())
+  userId          Int
+  type            CalculationType  @default(COOKING)
+  emissions       Float
+  carbonOffset    Float            @default(0)
+
+  // Keep only cooking-specific fields
+  cookingDuration Float?
+  cookingMeals    Int?
+  fuelType        String?
+  charcoalUsed    Float?
+
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user            User             @relation(fields: [userId], references: [id])
+
+  // Relations to offsets (baseline and improved)
+  offsetsAsBaseline Offset[]       @relation("BaselineCalculation")
+  offsetsAsImproved Offset[]       @relation("ImprovedCalculation")
 
   @@index([userId])
   @@index([type])
   @@index([createdAt])
-}
-
-model Offset {
-  id                    Int          @id @default(autoincrement())
-  userId                Int
-  amount                Float
-  baselineCalculationId Int?
-  improvedCalculationId Int?
-  createdAt             DateTime     @default(now())
-  updatedAt             DateTime     @updatedAt
-  details               Json?
-  baselineCalculation   Calculation? @relation("BaselineCalculation", fields: [baselineCalculationId], references: [id])
-  improvedCalculation   Calculation? @relation("ImprovedCalculation", fields: [improvedCalculationId], references: [id])
-  user                  User         @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@index([baselineCalculationId])
-  @@index([improvedCalculationId])
 }
 
 enum Role {
@@ -69,5 +56,27 @@ enum Role {
 }
 
 enum CalculationType {
+
   COOKING
+  
+}
+
+// Track explicit offset actions/improvements
+model Offset {
+  id                     Int          @id @default(autoincrement())
+  userId                 Int
+  amount                 Float
+  baselineCalculationId  Int?
+  improvedCalculationId  Int?
+  details                Json?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+
+  user                   User         @relation(fields: [userId], references: [id])
+  baselineCalculation    Calculation? @relation("BaselineCalculation", fields: [baselineCalculationId], references: [id])
+  improvedCalculation    Calculation? @relation("ImprovedCalculation", fields: [improvedCalculationId], references: [id])
+
+  @@index([userId])
+  @@index([baselineCalculationId])
+  @@index([improvedCalculationId])
 }

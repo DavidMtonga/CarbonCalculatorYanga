@@ -9,7 +9,29 @@ const adminController = require("./controllers/adminController");
 const prisma = new PrismaClient();
 const app = express();
 
-app.use(cors());
+// CORS configuration
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  "https://carbon-calculator-yanga-dbvn.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
+
+const corsOptions = {
+  origin: allowedOrigins,
+  credentials: false, // we use Authorization header, not cookies
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "accesstoken",
+    "refreshtoken",
+  ],
+  optionsSuccessStatus: 204,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 app.use(express.json());
 
 // Authentication middleware
