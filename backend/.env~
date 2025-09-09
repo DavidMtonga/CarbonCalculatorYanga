@@ -1,35 +1,19 @@
-# Database Configuration
-DATABASE_URL="postgresql://carbon_user:your_secure_password_here@localhost:5432/carbon_calculator?schema=public"
-
-# Authentication Settings
+DATABASE_URL='postgresql://neondb_owner:npg_gehM3UQYFPb1@ep-weathered-pond-a2n0wfmn-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 JWT_SECRET="your_strong_jwt_secret_here"
 JWT_EXPIRES_IN="24h"
 JWT_COOKIE_EXPIRES=90
-
-# Admin Registration Secret
 ADMIN_REGISTRATION_SECRET="admin_secret_2024_carbon_calculator"
-
-# Server Configuration
 PORT=3000
 NODE_ENV="development"
-
-# Frontend Configuration
 FRONTEND_URL="http://localhost:5173"
 CORS_ORIGIN="http://localhost:5173,http://localhost:3000"
-
-# Email Configuration (if needed)
 SMTP_HOST="smtp.example.com"
 SMTP_PORT=587
 SMTP_USERNAME="your_email@example.com"
 SMTP_PASSWORD="your_email_password"
 FROM_EMAIL="noreply@carboncalculator.com"
 FROM_NAME="Carbon Calculator"
-
-# Rate Limiting
-RATE_LIMIT_WINDOW_MS=900000 # 15 minutes
+RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX=100
-
-# Security
-COOKIE_SECURE="false" # set to "true" in production
+COOKIE_SECURE="false"
 COOKIE_SAMESITE="Lax"
-
