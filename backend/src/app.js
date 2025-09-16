@@ -42,12 +42,9 @@ const corsOptions = {
   },
   credentials: false,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "accesstoken",
-    "refreshtoken",
-  ],
+  // Let the cors package reflect requested headers by omitting allowedHeaders
+  // If you prefer explicit, include common ones below
+  allowedHeaders: undefined,
   optionsSuccessStatus: 204,
 };
 
