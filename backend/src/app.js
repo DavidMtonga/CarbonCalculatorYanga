@@ -9,20 +9,38 @@ const adminController = require("./controllers/adminController");
 const prisma = new PrismaClient();
 const app = express();
 
+// Compose allowed origins from env and known hosts
+const envOrigins = (process.env.CORS_ORIGIN || process.env.FRONTEND_URL || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  "https://carbon-calculator-yanga-dbvn.vercel.app",
+  ...envOrigins,
   "http://localhost:5173",
+  "http://127.0.0.1:5173",
   "http://localhost:3000",
+  "https://carbon-calculator-yanga-dbvn.vercel.app",
+  "https://carbon-calculator-yanga-cd622frhm-david-mtongas-projects.vercel.app",
 ].filter(Boolean);
 
 const corsOptions = {
   origin: (origin, callback) => {
-    if (!origin) return callback(null, true); // allow tools like Postman
+    if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) return callback(null, true);
+    // Allow subdomains if wildcard provided via env like https://*.vercel.app
+    const wildcard = envOrigins.find((o) => o.includes("*"));
+    if (wildcard) {
+      try {
+        const pattern = new RegExp(
+          "^" + wildcard.replace(/[.+?^${}()|[\\]\\\\]/g, "\\$&").replace(/\\\\\*/g, ".*") + "$"
+        );
+        if (origin && pattern.test(origin)) return callback(null, true);
+      } catch (_) {}
+    }
     return callback(new Error("Not allowed by CORS"));
   },
-  credentials: false, // set true if you want cookies/sessions
+  credentials: false,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: [
     "Content-Type",
