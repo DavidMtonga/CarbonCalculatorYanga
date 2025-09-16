@@ -1,6 +1,6 @@
 # Database Configuration
 # DATABASE_URL="postgresql://carbon_user:your_secure_password_here@localhost:5432/carbon_calculator?schema=public"
-DATABASE_URL='postgresql://neondb_owner:npg_gehM3UQYFPb1@ep-weathered-pond-a2n0wfmn-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+DATABASE_URL="postgresql://neondb_owner:npg_gehM3UQYFPb1@ep-weathered-pond-a2n0wfmn-pooler.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 # Authentication Settings
 JWT_SECRET="your_strong_jwt_secret_here"
 JWT_EXPIRES_IN="24h"
@@ -32,3 +32,4 @@ RATE_LIMIT_MAX=100
 # Security
 COOKIE_SECURE="false" # set to "true" in production
 COOKIE_SAMESITE="Lax"
+
