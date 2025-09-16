@@ -25,21 +25,8 @@ const allowedOrigins = [
 ].filter(Boolean);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
-    // Allow subdomains if wildcard provided via env like https://*.vercel.app
-    const wildcard = envOrigins.find((o) => o.includes("*"));
-    if (wildcard) {
-      try {
-        const pattern = new RegExp(
-          "^" + wildcard.replace(/[.+?^${}()|[\\]\\\\]/g, "\\$&").replace(/\\\\\*/g, ".*") + "$"
-        );
-        if (origin && pattern.test(origin)) return callback(null, true);
-      } catch (_) {}
-    }
-    return callback(new Error("Not allowed by CORS"));
-  },
+  // Temporarily reflect any request origin (helps resolve preflight issues across envs)
+  origin: true,
   credentials: false,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   // Let the cors package reflect requested headers by omitting allowedHeaders
