@@ -15,7 +15,11 @@ Thumbs.db
 
 # Ignore Windows-reserved ghost file that breaks git on Windows
 backend/NUL
+NUL
 
 # Optional: ignore build folders
 /frontend/build/
 /backend/dist/
+
+# Local backups
+backend/prisma/.env.bak
