@@ -9,7 +9,7 @@ export default function HomePage() {
           UNZA Carbon Calculator Yanga
         </h1>
         <p className="text-base sm:text-lg text-gray-700">
-          Calculate and reduce your household energy and cooking footprint
+          Calculate and reduce your household energy and cooking footprint with UNZA CCY
         </p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
